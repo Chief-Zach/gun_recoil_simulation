@@ -64,15 +64,15 @@ class Simulation:
 
         # Resisting force based on current velocity
         resisting_force = self.resistance * self.gun_velocity if x > self.initial_x or self.shoot else 0
-
+        # resisting_force = 1443.706426034108 if x > self.initial_x or self.shoot else 0
         # Compute acceleration based on forces
         dvxdt = -resisting_force  # Negative because it's opposing motion
         dvydt = 0
 
         if self.shoot:
-            # Apply gun force as an acceleration
-            dvxdt += self.gun_velocity  # Now added to acceleration (dvxdt)
-            # print(f"Applied gun velocity {self.gun_velocity} and resisting force {resisting_force}")
+
+            dvxdt += self.gun_velocity
+            print(f"Applied gun velocity {self.gun_velocity} and resisting force {resisting_force}")
 
         return [dxdt, dydt, dvxdt, dvydt]
     def pause(self):
@@ -162,7 +162,24 @@ if __name__ == '__main__':
     # setting up simulation
     sim = Simulation()
     initial_state = [500, 250, 0, 0]
-    sim.init(initial_state, 15.09, 7127.88, 48.59, 838.8)
+    print("""
+    Choose a gun:
+    1. Remington 700, 11 grain powder, 25 grain .17 Rem. SpHP
+    2. Barret M82, 200 grain powder, 750 grain .50 BMG SpBT
+    3. M16, 25 grain, 62 grain M855A1 5.56×45mm NATO
+    4. Custom
+    """)
+    choice = input("")
+    match choice:
+        case "1":
+            sim.init(initial_state, 0.712788, 4080.0, 1.61997275, 1231.392)
+        case "2":
+            sim.init(initial_state, 14.25576, 7127.88, 48.59, 838.8)
+        case "3":
+            sim.init(initial_state, 1.61997, 3400.0, 4.0175, 961.0)
+        case _:
+            print("Does not match")
+            exit(1)
 
     while True:
         # 30 fps
@@ -214,7 +231,6 @@ if __name__ == '__main__':
 
         screen.fill(WHITE)
 
-        # Draw all sprites
         my_group.draw(screen)
         text.draw("Time = %f" % sim.cur_time, screen, (10, 10))
         text.draw("x = %f" % sim.state[0], screen, (10, 40))
