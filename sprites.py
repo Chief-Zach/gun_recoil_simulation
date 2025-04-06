@@ -1,15 +1,14 @@
 import pygame
 WHITE = (255, 255, 255)
 class MyRect(pygame.sprite.Sprite):
-    def __init__(self, color, width, height):
+    def __init__(self, aspect, image, length):
         pygame.sprite.Sprite.__init__(self)
 
-        self.image = pygame.image.load("Adobe Express - file.png").convert()
-        self.image.set_colorkey((0, 0, 0))  # Set black as the transparent color
-
+        self.image = pygame.image.load(image).convert_alpha()
+        # self.image.set_colorkey((0, 0, 0))  # Set black as the transparent color
         # Resize if width and height are provided
-        if width and height:
-            self.image = pygame.transform.scale(self.image, (width, height))
+        width = 500 * length / 100
+        self.image = pygame.transform.scale(self.image, (width, width/aspect))
 
         self.rect = self.image.get_rect()
         self.picked = False

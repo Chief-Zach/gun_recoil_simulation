@@ -15,7 +15,7 @@ class Simulation:
         self.paused = True # starting in paused mode
         self.title = title
         self.cur_time = 0
-        self.dt = 0.033
+        self.dt = 0.001
         self.g = 9.8
         self.times = []
         self.positions = []
@@ -32,15 +32,13 @@ class Simulation:
         self.shoot = False
         self.gas_exit_velocity =  None
         self.gun_velocity = None
-        self.resistance = None
         self.initial_x = None
-        self.resisting_force = 0
+        self.person_weight = person_weight
 
-    def init(self, state, powder_weight, gun_weight, bullet_weight, mv: Union[int, float] = 1000, resistance=0.3):
+    def init(self, state, powder_weight, gun_weight, bullet_weight, mv: Union[int, float] = 1000):
         self.state = state
         self.initial_x = state[0]
         self.powder_weight = powder_weight
-        self.resistance = resistance
         self.gun_weight = gun_weight
         self.mv = mv
         self.bullet_weight = bullet_weight
@@ -53,26 +51,25 @@ class Simulation:
 
         self.solver.set_initial_value(self.state, self.cur_time)
 
-    def fire(self):
-        print("FIRING")
-        self.shoot = True
-
     def f(self, t):
         x, y, vx, vy = self.state
         dxdt = vx
         dydt = vy
 
         # Resisting force based on current velocity
-        resisting_force = self.resistance * self.gun_velocity if x > self.initial_x or self.shoot else 0
-        # resisting_force = 1443.706426034108 if x > self.initial_x or self.shoot else 0
+        delta_x = x - self.initial_x
+        # print(delta_x)
+
+        # resisting_velocity = 0.9 * self.gun_velocity if x > self.initial_x or self.shoot else 0
+        # resisting_velocity = ((self.gun_velocity*self.gun_weight) / self.person_weight) if x > self.initial_x or self.shoot else 0
         # Compute acceleration based on forces
-        dvxdt = -resisting_force  # Negative because it's opposing motion
+        resisting_velocity = 150000 * delta_x / self.gun_weight
+        dvxdt = -resisting_velocity  # Negative because it's opposing motion
         dvydt = 0
 
         if self.shoot:
-
             dvxdt += self.gun_velocity
-            print(f"Applied gun velocity {self.gun_velocity} and resisting force {resisting_force}")
+            # print(f"Applied gun velocity {self.gun_velocity} and resisting force {resisting_velocity}")
 
         return [dxdt, dydt, dvxdt, dvydt]
     def pause(self):
@@ -95,7 +92,7 @@ class Simulation:
         x, y, vx, vy = self.solver.y
 
         if x < self.initial_x:
-            print("RESETTING ODE")
+            # print("RESETTING ODE")
             self.state = self.initial_x, y, 0, vy
             self.set_integrator()
         else:
@@ -115,28 +112,33 @@ class Simulation:
 
         self.gv()
 
-        self.gun_velocity *= 500
-        print(self.gun_velocity)
+        self.gun_velocity *= 500 * (1/self.dt)
 
-
+    # Gun Velocity
     def gv(self):
         self.gun_velocity = self.gun_momentum / self.gun_weight
 
+    # Jet Effect Momentum
     def jem(self):
         self.je_momentum = self.powder_weight * self.mv * 1.7
 
+    # Gas exit velocity
     def gev(self):
         self.gas_exit_velocity = 1.7 * self.mv
 
+    # Bullet Momentum
     def bm(self):
         self.bullet_momentum = self.bullet_weight * self.mv
 
+    # Gas momentum
     def gm(self):
         self.gas_momentum = self.powder_weight * self.mv / 2
 
+    # Gun momentum (equation one)
     def gun_momentum_addition(self):
         self.gun_momentum = self.bullet_momentum + self.gas_momentum + self.je_momentum
 
+    # Gun momentum (equation two)
     def gun_momentum_multiplication(self):
         self.gun_momentum = self.gun_weight * self.gun_velocity
 
@@ -148,16 +150,10 @@ if __name__ == '__main__':
     automatic = False
     released = True
     last_shot = 0
+    person_weight = 70
     screen = pygame.display.set_mode((win_width, win_height))
     pygame.display.set_caption(title)
     clock = pygame.time.Clock()
-
-    gun = MyRect(color=GREEN, width=500, height=100)
-    text = MyText(color=BLACK)
-    center = MyRect(color=RED, width=4, height=4)
-    x_axis = MyRect(color=BLACK, width=1000, height=1)
-    y_axis = MyRect(color=BLACK, width=1, height=1000)
-    my_group = pygame.sprite.Group([x_axis, y_axis, gun, center])
 
     # setting up simulation
     sim = Simulation()
@@ -172,18 +168,46 @@ if __name__ == '__main__':
     choice = input("")
     match choice:
         case "1":
-            sim.init(initial_state, 0.712788, 4080.0, 1.61997275, 1231.392)
+            sim.init(initial_state, 0.00712788, 4.0800, 0.00161997275, 1231.392)
+            aspect = 4.204
+            image = "remington-700.png"
+            length = 105
         case "2":
-            sim.init(initial_state, 14.25576, 7127.88, 48.59, 838.8)
+            sim.init(initial_state, 0.01425576, 7.12788, .04859, 838.8)
+            aspect = 2.4466
+            image = "barret-m82.png"
+            length = 140
         case "3":
-            sim.init(initial_state, 1.61997, 3400.0, 4.0175, 961.0)
+            sim.init(initial_state, 0.00161997, 3.4000, 0.0040175, 961.0)
+            aspect = 3.609
+            image = "M16.png"
+            length = 100
+        case "4":
+            try:
+
+                pw = float(input("Powder weight in grams: "))
+                gw = float(input("Gun weight in grams: "))
+                bw = float(input("Bullet weight in grams: "))
+                mv = float(input("Muzzle velocity of the bullet in m/s: "))
+            except ValueError:
+                print("Please enter numbers.")
+                exit(1)
+            sim.init(initial_state, pw, gw, bw, mv)
+            aspect = 3.609
+            image = "M16.png"
+            length = 100
+
         case _:
             print("Does not match")
             exit(1)
 
+    gun = MyRect(aspect, image, length)
+    text = MyText(color=BLACK)
+    my_group = pygame.sprite.Group([gun])
+
     while True:
         # 30 fps
-        clock.tick(60)
+        clock.tick(300)
 
         # update sprite x, y position using values
         # returned from the simulation
@@ -217,17 +241,20 @@ if __name__ == '__main__':
 
         if keys[pygame.K_f]:
             if automatic:
-                if (sim.cur_time - last_shot) > 1 / rounds_per_second:
+                if (sim.cur_time - last_shot) > (1 / rounds_per_second):
                     sim.shoot = True
                     last_shot = sim.cur_time
+                else:
+                    sim.shoot = False
             else:
                 if released:
                     sim.shoot = True
                     released = False
+                    last_shot = sim.cur_time  # Add this line to track the last shot time
 
         if not sim.paused:
             sim.step()
-            sim.shoot = False
+        sim.shoot = False
 
         screen.fill(WHITE)
 
@@ -236,6 +263,7 @@ if __name__ == '__main__':
         text.draw("x = %f" % sim.state[0], screen, (10, 40))
         text.draw("y = %f" % sim.state[1], screen, (10, 70))
         text.draw(f"RPS = {rounds_per_second}", screen, (10, 100))
+        og_velocity = sim.gun_velocity / (500 * (1/sim.dt))
         text.draw(f"Mode = {'Automatic' if automatic else 'Semi-Automatic'}", screen, (10, 130))
 
 
